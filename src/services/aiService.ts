@@ -20,8 +20,8 @@ export const getTranscriptionSummary = async (
               role: "user",
               content: [
                 {
-                  text: `Summarize the following medical conversation between a docker and patient. Include: summary, medication details in a table, vaccination info, developmental advice, symptoms to monitor, and follow-up plan. Use plain language parents can understand. Return the output in structured markdown format. Return only the output no any other questions or explanations.
-${transcription}`,
+                  text: `Summarize the following medical conversation between a docker and patient. Include: summary, medication details in a table, vaccination info, developmental advice, symptoms to monitor, and follow-up plan. Use plain language parents can understand. Return the output in structured markdown format. If you don't find sufficient information to generate an accurate result, return "Unable to generate summary". Return only the output no any other questions or explanations.
+"${transcription}"`,
                 },
               ],
             },
