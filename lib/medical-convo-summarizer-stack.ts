@@ -138,6 +138,35 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
     })
 
 
+    // Create the Lambda function for handling completed transcriptions
+    const onTranscriptionCompleteFunction = new NodejsFunction(
+      this,
+      "OnTranscriptionCompleteFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        functionName: "OnTranscriptionCompleteFunction",
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../src/functions/on-transcription-complete.ts"
+        ),
+        environment: {
+          APPSYNC_API_URL: appSyncGraphQLApi.graphqlUrl,
+        }
+      }
+    );
+
+    // Grant the Lambda function read access to the bucket
+    bucket.grantRead(onTranscriptionCompleteFunction);
+
+    // Add S3 event notification for transcribed/ prefix, only for .json files
+    bucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new LambdaDestination(onTranscriptionCompleteFunction),
+      { prefix: "transcribed/", suffix: ".json" }
+    );
+
+
     // Output the API endpoint URL
     new cdk.CfnOutput(this, "GraphQLUrl", {
       value: appSyncGraphQLApi.graphqlUrl,
