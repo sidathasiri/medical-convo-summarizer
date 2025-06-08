@@ -16,6 +16,26 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
       bucketName: "medical-convo-bucket",
       removalPolicy: cdk.RemovalPolicy.DESTROY, // This will allow the bucket to be deleted when the stack is destroyed
       autoDeleteObjects: true, // This will delete all objects when the bucket is removed
+      cors: [
+        {
+          allowedHeaders: ["*"],
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.HEAD,
+          ],
+          allowedOrigins: ["*"], // In production, you should restrict this to your frontend domain
+          exposedHeaders: [
+            "ETag",
+            "x-amz-server-side-encryption",
+            "x-amz-request-id",
+            "x-amz-id-2",
+          ],
+          maxAge: 3000,
+        },
+      ],
     });
 
     // Create the Lambda function for transcription summary
