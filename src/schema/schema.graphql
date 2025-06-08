@@ -1,0 +1,9 @@
+type Query {
+  getTranscriptionSummary(transcription: String!): TranscriptionSummaryResult!
+}
+
+type TranscriptionSummaryResult {
+  success: Boolean!
+  error: String
+  summary: String
+}
