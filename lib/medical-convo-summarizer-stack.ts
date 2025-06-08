@@ -6,6 +6,7 @@ import * as path from "path";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { GraphqlApi, SchemaFile } from "aws-cdk-lib/aws-appsync";
+import { LambdaDestination } from "aws-cdk-lib/aws-s3-notifications";
 
 export class MedicalConvoSummarizerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -61,6 +62,40 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
         actions: ["bedrock:InvokeModel"],
         resources: ["*"], // You can restrict this to specific model ARNs if needed
       })
+    );
+
+    // Create the Lambda function for transcription summary
+    const startTranscriptionJobFunction = new NodejsFunction(
+      this,
+      "StartTranscriptionJobFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        functionName: "StartTranscriptionJobFunction",
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../src/functions/start-transcription.ts"
+        ),
+      }
+    );
+
+    // Grant Transcribe permissions to the Lambda function
+    startTranscriptionJobFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["transcribe:StartTranscriptionJob"],
+        resources: ["*"],
+      })
+    );
+
+    // Grant the Lambda function read AND write access to the bucket
+    bucket.grantReadWrite(startTranscriptionJobFunction);
+
+    // Add S3 event notification for uploads/ prefix
+    bucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new LambdaDestination(startTranscriptionJobFunction),
+      { prefix: "uploads/" }
     );
 
     const appSyncGraphQLApi = new GraphqlApi(this, `graphql-api-${id}`, {
