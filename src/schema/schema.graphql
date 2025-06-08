@@ -2,8 +2,26 @@ type Query {
   getTranscriptionSummary(transcription: String!): TranscriptionSummaryResult!
 }
 
+type Mutation {
+  updateTranscriptionStatus(
+    fileName: String!,
+    transcribedText: String,
+  ): TranscriptionJobStatus!
+}
+
+type Subscription {
+  onTranscriptionComplete(fileName: String!): TranscriptionJobStatus
+    @aws_subscribe(mutations: ["updateTranscriptionStatus"])
+}
+
 type TranscriptionSummaryResult {
   success: Boolean!
   error: String
   summary: String
+}
+
+type TranscriptionJobStatus {
+  fileName: String!
+  transcribedText: String
+  error: String
 }

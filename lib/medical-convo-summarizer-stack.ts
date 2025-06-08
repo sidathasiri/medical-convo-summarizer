@@ -110,6 +110,34 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
     })
 
 
+    // Lambda for updateTranscriptionStatus mutation
+    const updateTranscriptionStatusFunction = new NodejsFunction(
+      this,
+      "UpdateTranscriptionStatusFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        functionName: "UpdateTranscriptionStatusFunction",
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../src/functions/update-transcription-status.ts"
+        ),
+      }
+    );
+
+    // Add as AppSync data source
+    const updateTranscriptionStatusDataSource = appSyncGraphQLApi.addLambdaDataSource(
+      'update-transcription-status-data-source',
+      updateTranscriptionStatusFunction
+    );
+
+    // Attach resolver for the mutation
+    updateTranscriptionStatusDataSource.createResolver('updateTranscriptionStatus-resolver', {
+      fieldName: 'updateTranscriptionStatus',
+      typeName: 'Mutation',
+    })
+
+
     // Output the API endpoint URL
     new cdk.CfnOutput(this, "GraphQLUrl", {
       value: appSyncGraphQLApi.graphqlUrl,
