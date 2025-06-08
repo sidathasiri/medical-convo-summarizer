@@ -4,8 +4,8 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
 import * as iam from "aws-cdk-lib/aws-iam";
-import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import { GraphqlApi, SchemaFile } from "aws-cdk-lib/aws-appsync";
 
 export class MedicalConvoSummarizerStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -34,41 +34,6 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
       }
     );
 
-    // Create the API Gateway with CORS enabled
-    const api = new apigateway.RestApi(this, "MedicalConvoApi", {
-      restApiName: "Medical Conversation API",
-      description: "API for medical conversation transcription and summary",
-      defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: [
-          "Content-Type",
-          "X-Amz-Date",
-          "Authorization",
-          "X-Api-Key",
-          "X-Amz-Security-Token",
-          "X-Amz-User-Agent",
-        ],
-        allowCredentials: true,
-        maxAge: cdk.Duration.days(1),
-      },
-      deployOptions: {
-        stageName: "prod",
-      },
-    });
-
-    // Create the /transcription/summary resource and method
-    const transcriptionResource = api.root.addResource("transcription");
-    const summaryResource = transcriptionResource.addResource("summary");
-
-    // Add POST method with Lambda integration
-    summaryResource.addMethod(
-      "POST",
-      new apigateway.LambdaIntegration(transcriptionSummaryFunction, {
-        proxy: true,
-      })
-    );
-
     // Grant Bedrock invoke permissions to the Lambda function
     transcriptionSummaryFunction.addToRolePolicy(
       new iam.PolicyStatement({
@@ -78,10 +43,22 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
       })
     );
 
+    const appSyncGraphQLApi = new GraphqlApi(this, `graphql-api-${id}`, {
+      name: `Medical-Conversation-API`,
+      schema: SchemaFile.fromAsset("src/schema/schema.graphql"),
+    });
+    const transcriptionSummaryDataSource = appSyncGraphQLApi.addLambdaDataSource('transcription-summary-data-source', transcriptionSummaryFunction)
+
+    transcriptionSummaryDataSource.createResolver('getTranscriptionSummary-resolver', {
+      fieldName: 'getTranscriptionSummary',
+      typeName: 'Query'
+    })
+
+
     // Output the API endpoint URL
-    new cdk.CfnOutput(this, "ApiEndpoint", {
-      value: api.url,
-      description: "API Gateway endpoint URL",
+    new cdk.CfnOutput(this, "GraphQLUrl", {
+      value: appSyncGraphQLApi.graphqlUrl,
+      description: "AppSync Graphql endpoint URL",
     });
   }
 }

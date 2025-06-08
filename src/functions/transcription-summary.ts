@@ -1,57 +1,43 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { AppSyncResolverHandler } from "aws-lambda";
 import { getTranscriptionSummary } from "../services/aiService";
 
-interface TranscriptionRequest {
+type Arguments = {
   transcription: string;
-}
+};
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+type TranscriptionSummaryResult = {
+  success: boolean;
+  error?: string;
+  summary?: string;
+};
+
+export const handler: AppSyncResolverHandler<
+  Arguments,
+  TranscriptionSummaryResult
+> = async (event) => {
   try {
-    // Parse the request body
-    const body = JSON.parse(event.body || "{}") as TranscriptionRequest;
-
+    console.log('event:', event);
+    
     // Validate the required transcription field
-    if (!body.transcription) {
+    if (!event.arguments.transcription) {
       return {
-        statusCode: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-        body: JSON.stringify({
-          error: "Missing required field: transcription",
-        }),
+        success: false,
+        error: "Missing required field: transcription",
       };
     }
 
-    // TODO: Add your transcription processing logic here
-    // For now, we'll just echo back the transcription
-    const response = {
-      message: "Summary generated successfully",
-      transcription: await getTranscriptionSummary(body.transcription),
-    };
+    // Get the transcription summary using the AI service
+    const summaryText = await getTranscriptionSummary(event.arguments.transcription);
 
     return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-      body: JSON.stringify(response),
+      success: true,
+      summary: summaryText as string,
     };
   } catch (error) {
     console.error("Error processing request:", error);
     return {
-      statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-      body: JSON.stringify({
-        error: "Internal server error",
-      }),
+      success: false,
+      error: error instanceof Error ? error.message : "Internal server error",
     };
   }
 };
