@@ -10,7 +10,7 @@ type Mutation {
 }
 
 type Subscription {
-  onTranscriptionComplete(fileName: String!): TranscriptionJobStatus
+  onTranscriptionComplete(fileName: String): TranscriptionJobStatus
     @aws_subscribe(mutations: ["updateTranscriptionStatus"])
 }
 
