@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 
 const APPSYNC_API_URL = process.env.APPSYNC_API_URL;
+const APPSYNC_API_KEY = process.env.APPSYNC_API_KEY;
 const s3Client = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export const handler = async (event: S3Event) => {
@@ -44,12 +45,12 @@ export const handler = async (event: S3Event) => {
       throw new Error('APPSYNC_API_URL environment variable is not set');
     }
 
-    // Call the AppSync API
-    const response = await fetch(APPSYNC_API_URL, {
+    // Call the AppSync API with API Key
+    const response = await fetch(APPSYNC_API_URL!, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'x-api-key': 'your-appsync-api-key' // Replace with your actual API key
+        'x-api-key': APPSYNC_API_KEY!
       },
       body: JSON.stringify({ query: mutation, variables })
     });

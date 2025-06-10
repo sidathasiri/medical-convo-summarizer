@@ -4,13 +4,26 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as path from "path";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as appsync from "aws-cdk-lib/aws-appsync";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import { GraphqlApi, SchemaFile } from "aws-cdk-lib/aws-appsync";
+import { GraphqlApi, SchemaFile, AuthorizationType } from "aws-cdk-lib/aws-appsync";
 import { LambdaDestination } from "aws-cdk-lib/aws-s3-notifications";
 
+interface MedicalConvoSummarizerStackProps extends cdk.StackProps {
+  existingUserPoolId: string;
+}
+
 export class MedicalConvoSummarizerStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: MedicalConvoSummarizerStackProps) {
     super(scope, id, props);
+
+    // Import the existing Cognito User Pool
+    const userPool = cognito.UserPool.fromUserPoolId(
+      this,
+      'ExistingUserPool',
+      props.existingUserPoolId
+    );
 
     // Create an S3 bucket
     const bucket = new s3.Bucket(this, "MedicalConvoBucket", {
@@ -101,6 +114,25 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
     const appSyncGraphQLApi = new GraphqlApi(this, `graphql-api-${id}`, {
       name: `Medical-Conversation-API`,
       schema: SchemaFile.fromAsset("src/schema/schema.graphql"),
+      authorizationConfig: {
+        defaultAuthorization: {
+          authorizationType: AuthorizationType.USER_POOL,
+          userPoolConfig: {
+            userPool,
+            defaultAction: appsync.UserPoolDefaultAction.ALLOW
+          }
+        },
+        additionalAuthorizationModes: [
+          {
+            authorizationType: AuthorizationType.API_KEY,
+            apiKeyConfig: {
+              name: 'TranscriptionApiKey',
+              description: 'API Key for transcription status updates',
+              expires: cdk.Expiration.after(cdk.Duration.days(365))
+            }
+          }
+        ]
+      }
     });
     const transcriptionSummaryDataSource = appSyncGraphQLApi.addLambdaDataSource('transcription-summary-data-source', transcriptionSummaryFunction)
 
@@ -167,10 +199,13 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
     );
 
 
-    // Output the API endpoint URL
+    // Add API Key to Lambda environment variables
+    onTranscriptionCompleteFunction.addEnvironment('APPSYNC_API_KEY', appSyncGraphQLApi.apiKey || '');
+
+    // Output important configuration
     new cdk.CfnOutput(this, "GraphQLUrl", {
       value: appSyncGraphQLApi.graphqlUrl,
-      description: "AppSync Graphql endpoint URL",
+      description: "AppSync GraphQL API URL",
     });
   }
 }
