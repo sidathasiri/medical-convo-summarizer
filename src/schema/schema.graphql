@@ -1,5 +1,6 @@
 type Query {
   getTranscriptionSummary(transcription: String!): TranscriptionSummaryResult!
+    @aws_cognito_user_pools
 }
 
 type Mutation {
@@ -7,11 +8,13 @@ type Mutation {
     fileName: String!,
     transcribedText: String,
   ): TranscriptionJobStatus!
+    @aws_api_key
 }
 
 type Subscription {
   onTranscriptionComplete(fileName: String): TranscriptionJobStatus
     @aws_subscribe(mutations: ["updateTranscriptionStatus"])
+    @aws_cognito_user_pools
 }
 
 type TranscriptionSummaryResult {
@@ -20,7 +23,9 @@ type TranscriptionSummaryResult {
   summary: String
 }
 
-type TranscriptionJobStatus {
+type TranscriptionJobStatus
+  @aws_api_key
+{
   fileName: String!
   transcribedText: String
   error: String
