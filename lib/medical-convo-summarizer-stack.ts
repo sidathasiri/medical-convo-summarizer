@@ -207,5 +207,41 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
       value: appSyncGraphQLApi.graphqlUrl,
       description: "AppSync GraphQL API URL",
     });
+
+    // Create the Lambda function for baby development info
+    const babyDevelopmentInfoFunction = new NodejsFunction(
+      this,
+      "BabyDevelopmentInfoFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        functionName: "BabyDevelopmentInfoFunction",
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../src/functions/get-baby-development-info.ts"
+        ),
+        timeout: cdk.Duration.minutes(1),
+      }
+    );
+
+    // Grant Bedrock invoke permissions to the Lambda function
+    babyDevelopmentInfoFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["bedrock:InvokeModel"],
+        resources: ["*"],
+      })
+    );
+
+    // Add as AppSync data source and create resolver
+    const babyDevelopmentInfoDataSource = appSyncGraphQLApi.addLambdaDataSource(
+      'baby-development-info-data-source',
+      babyDevelopmentInfoFunction
+    );
+
+    babyDevelopmentInfoDataSource.createResolver('getBabyDevelopmentInfo-resolver', {
+      fieldName: 'getBabyDevelopmentInfo',
+      typeName: 'Query',
+    });
   }
 }

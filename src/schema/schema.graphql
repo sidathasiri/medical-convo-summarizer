@@ -1,6 +1,8 @@
 type Query {
   getTranscriptionSummary(transcription: String!): TranscriptionSummaryResult!
     @aws_cognito_user_pools
+  getBabyDevelopmentInfo(ageInMonths: Int!): BabyDevelopmentInfo!
+    @aws_cognito_user_pools
 }
 
 type Mutation {
@@ -15,6 +17,12 @@ type Subscription {
   onTranscriptionComplete(fileName: String): TranscriptionJobStatus
     @aws_subscribe(mutations: ["updateTranscriptionStatus"])
     @aws_cognito_user_pools
+}
+
+type BabyDevelopmentInfo {
+  success: Boolean!
+  error: String
+  info: String
 }
 
 type TranscriptionSummaryResult {
