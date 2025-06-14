@@ -107,10 +107,12 @@ async function createReminder(input: ReminderInput): Promise<Reminder> {
             id: reminderId,
             userId: input.userId,
             email: input.email,
-            description: input.description
+            description: input.description,
+            dateTime: input.dateTime
           }
         })
       },
+      ActionAfterCompletion: 'DELETE',
       FlexibleTimeWindow: {
         Mode: 'OFF'
       }
