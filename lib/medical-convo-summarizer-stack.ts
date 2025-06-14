@@ -36,6 +36,47 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
       timeToLiveAttribute: 'ttl', // Optional: if you want to automatically delete expired reminders
     });
 
+    // Create IAM role for EventBridge scheduler to invoke Lambda
+    const schedulerRole = new iam.Role(this, 'SchedulerRole', {
+      assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
+      description: 'Role for EventBridge Scheduler to invoke Lambda function',
+    });
+
+    // Create the Lambda function for processing reminders
+    const processReminderFunction = new NodejsFunction(
+      this,
+      "ProcessReminderFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        functionName: "ProcessReminderFunction",
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../src/functions/process-reminder.ts"
+        ),
+        environment: {
+          TABLE_NAME: remindersTable.tableName,
+          FROM_EMAIL_ADDRESS: 'sidathasiri@hotmail.com',
+        },
+        timeout: cdk.Duration.seconds(30)
+      }
+    );
+
+    // Grant DynamoDB permissions to the process reminder function
+    remindersTable.grantReadWriteData(processReminderFunction);
+
+    // Grant SES permissions to send emails
+    processReminderFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendEmail", "ses:SendRawEmail"],
+        resources: ["*"]
+      })
+    );
+
+    // Allow EventBridge Scheduler to invoke the process reminder function
+    processReminderFunction.grantInvoke(schedulerRole);
+
     // Create an S3 bucket
     const bucket = new s3.Bucket(this, "MedicalConvoBucket", {
       bucketName: "medical-convo-bucket",
@@ -270,12 +311,28 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
         ),
         environment: {
           TABLE_NAME: remindersTable.tableName,
+          PROCESS_REMINDER_FUNCTION_ARN: processReminderFunction.functionArn,
+          SCHEDULER_EXECUTION_ROLE_ARN: schedulerRole.roleArn
         }
       }
     );
 
     // Grant DynamoDB permissions to the Lambda function
     remindersTable.grantReadWriteData(remindersFunction);
+
+    // Grant EventBridge Scheduler permissions
+    remindersFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "scheduler:CreateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+          "iam:PassRole"
+        ],
+        resources: ["*"]
+      })
+    );
 
     // Add as AppSync data source
     const remindersDataSource = appSyncGraphQLApi.addLambdaDataSource(

@@ -13,7 +13,7 @@ type Mutation {
     transcribedText: String,
   ): TranscriptionJobStatus!
     @aws_api_key
-  createReminder(description: String!, dateTime: String!, userId: ID!): Reminder!
+  createReminder(description: String!, dateTime: String!, userId: ID!, email: String!): Reminder!
     @aws_cognito_user_pools
   deleteReminder(userId: ID!, id: ID!): Boolean!
     @aws_cognito_user_pools

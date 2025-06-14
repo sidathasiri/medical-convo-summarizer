@@ -6,20 +6,28 @@ import {
   QueryCommand, 
   DeleteCommand
 } from '@aws-sdk/lib-dynamodb';
+import { 
+  SchedulerClient, 
+  CreateScheduleCommand,
+  DeleteScheduleCommand 
+} from "@aws-sdk/client-scheduler";
 import { v4 as uuidv4 } from 'uuid';
 
 const dynamoDb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const scheduler = new SchedulerClient({region: 'us-east-1'});
 const { TABLE_NAME } = process.env;
 
 type ReminderInput = {
   userId: string;
   description: string;
   dateTime: string;
+  email: string; // Assuming email is part of the input
 };
 
 type Reminder = {
   id: string;
   userId: string;
+  email: string;
   description: string;
   dateTime: string;
   createdAt: string;
@@ -27,6 +35,7 @@ type Reminder = {
 
 type ReminderWithTTL = Reminder & {
     ttl: number; // Unix timestamp for TTL
+    scheduleName: string; // Name of the EventBridge schedule
 }
 
 export const handler: AppSyncResolverHandler<any, any> = async (event) => {
@@ -76,18 +85,53 @@ async function createReminder(input: ReminderInput): Promise<Reminder> {
     throw new Error('Reminder dateTime must be in the future');
   }
 
+  // Generate IDs
+  const reminderId = generateId();
+  const scheduleName = reminderId; // Use the same ID for the schedule name
+
   // Convert to Unix timestamp for TTL (in UTC)
   const ttl = Math.floor(reminderDate.getTime() / 1000);
+  const formattedDate = reminderDate.toISOString().split('.')[0]
+
+  // Create EventBridge schedule
+  try {
+    await scheduler.send(new CreateScheduleCommand({
+      Name: reminderId,
+      ScheduleExpression: `at(${formattedDate})`, // Format: "at(YYYY-MM-DD HH:mm:ss)"
+      Target: {
+        Arn: process.env.PROCESS_REMINDER_FUNCTION_ARN,
+        RoleArn: process.env.SCHEDULER_EXECUTION_ROLE_ARN,
+        Input: JSON.stringify({
+          type: 'REMINDER_DUE',
+          reminder: {
+            id: reminderId,
+            userId: input.userId,
+            email: input.email,
+            description: input.description
+          }
+        })
+      },
+      FlexibleTimeWindow: {
+        Mode: 'OFF'
+      }
+    }));
+  } catch (error) {
+    console.error('Failed to create schedule:', error);
+    throw new Error('Failed to create reminder schedule');
+  }
 
   const reminder: ReminderWithTTL = {
-    id: generateId(),
+    id: reminderId,
     userId: input.userId,
+    email: input.email, // Assuming email is part of the input
     description: input.description,
     dateTime: input.dateTime,
     createdAt: new Date().toISOString(),
-    ttl: ttl
+    ttl: ttl,
+    scheduleName: scheduleName
   };
 
+  // Store in DynamoDB with scheduler name
   await dynamoDb.send(new PutCommand({
     TableName: TABLE_NAME,
     Item: reminder
@@ -97,6 +141,31 @@ async function createReminder(input: ReminderInput): Promise<Reminder> {
 }
 
 async function deleteReminder(userId: string, id: string): Promise<boolean> {
+  // Get the reminder first to get the schedule name
+  const result = await dynamoDb.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'userId = :userId AND id = :id',
+    ExpressionAttributeValues: {
+      ':userId': userId,
+      ':id': id
+    }
+  }));
+
+  const reminder = result.Items?.[0] as ReminderWithTTL;
+  
+  // Delete the EventBridge schedule
+  if (reminder?.scheduleName) {
+    try {
+      await scheduler.send(new DeleteScheduleCommand({
+        Name: reminder.scheduleName
+      }));
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      // Continue with deletion even if schedule deletion fails
+    }
+  }
+
+  // Delete from DynamoDB
   await dynamoDb.send(new DeleteCommand({
     TableName: TABLE_NAME,
     Key: { 
