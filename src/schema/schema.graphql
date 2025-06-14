@@ -33,7 +33,6 @@ type Reminder
   description: String!
   dateTime: String!
   createdAt: String!
-  completed: Boolean!
 }
 
 type BabyDevelopmentInfo {

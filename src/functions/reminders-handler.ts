@@ -23,8 +23,11 @@ type Reminder = {
   description: string;
   dateTime: string;
   createdAt: string;
-  completed: boolean;
 };
+
+type ReminderWithTTL = Reminder & {
+    ttl: number; // Unix timestamp for TTL
+}
 
 export const handler: AppSyncResolverHandler<any, any> = async (event) => {
   const { fieldName } = event.info;
@@ -60,13 +63,29 @@ async function listReminders(userId: string): Promise<Reminder[]> {
 }
 
 async function createReminder(input: ReminderInput): Promise<Reminder> {
-  const reminder: Reminder = {
+  // Validate the dateTime format (should be ISO 8601)
+  if (!input.dateTime.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/)) {
+    throw new Error('dateTime must be in ISO 8601 format (e.g., "2025-06-14T15:00:00Z" or "2025-06-14T15:00:00+05:30")');
+  }
+
+  // Parse the dateTime string which includes timezone information
+  const reminderDate = new Date(input.dateTime);
+  
+  // Validate that the date is in the future
+  if (reminderDate.getTime() <= Date.now()) {
+    throw new Error('Reminder dateTime must be in the future');
+  }
+
+  // Convert to Unix timestamp for TTL (in UTC)
+  const ttl = Math.floor(reminderDate.getTime() / 1000);
+
+  const reminder: ReminderWithTTL = {
     id: generateId(),
     userId: input.userId,
     description: input.description,
     dateTime: input.dateTime,
     createdAt: new Date().toISOString(),
-    completed: false
+    ttl: ttl
   };
 
   await dynamoDb.send(new PutCommand({
