@@ -1,5 +1,4 @@
 import { AppSyncResolverHandler } from 'aws-lambda';
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { getBabyDevelopmentInfo } from '../services/aiService';
 
 interface BabyDevelopmentInfoArgs {
@@ -11,8 +10,6 @@ interface BabyDevelopmentInfo {
   error?: string;
   info: string;
 }
-
-const bedrockClient = new BedrockRuntimeClient({ region: "us-east-1" });
 
 export const handler: AppSyncResolverHandler<BabyDevelopmentInfoArgs, BabyDevelopmentInfo> = async (event) => {
   try {

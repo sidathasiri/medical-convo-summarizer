@@ -82,7 +82,7 @@ export const handler: Handler<ReminderEvent> = async (event) => {
                     <h2>👋 Hello!</h2>
                     <p style="font-size: 16px;">Here's your friendly reminder about:</p>
                     <p style="font-size: 18px; color: #4a90e2; margin: 15px 0;">${event.reminder.description}</p>
-                    <p style="font-size: 14px; color: #666;">This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString()}</p>
+                    <p style="font-size: 14px; color: #666;">This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} (IST)</p>
                     <p style="font-size: 14px; margin-top: 15px;">We hope this reminder helps you stay on top of your healthcare journey!</p>
                   </div>
                   <div class="footer">
@@ -98,7 +98,7 @@ export const handler: Handler<ReminderEvent> = async (event) => {
 
 Here's your friendly reminder about: ${event.reminder.description}
 
-This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString()}
+This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} (IST)
 
 We hope this reminder helps you stay on top of your healthcare journey!
 
