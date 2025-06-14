@@ -19,7 +19,15 @@ export type ReminderWithTTL = Reminder & {
   scheduleName: string;
 };
 
+export type ReminderEventPayload = {
+  id: string;
+  userId: string;
+  email: string;
+  description: string;
+  dateTime: string;
+};
+
 export type ReminderEvent = {
   type: 'REMINDER_DUE';
-  reminder: Reminder;
+  reminder: ReminderEventPayload;
 };

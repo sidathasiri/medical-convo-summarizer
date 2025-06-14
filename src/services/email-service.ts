@@ -10,7 +10,7 @@ export class EmailService {
 
   async sendReminderEmail(event: ReminderEvent): Promise<void> {
     try {
-      const response = await this.ses.send(new SendEmailCommand({
+      await this.ses.send(new SendEmailCommand({
         Destination: {
           ToAddresses: [event.reminder.email],
         },
@@ -29,8 +29,6 @@ export class EmailService {
         },
         Source: process.env.FROM_EMAIL_ADDRESS,
       }));
-
-      console.log('Email sent:', response);
     } catch (error) {
       console.error('Error sending email:', error);
       throw error;
@@ -87,7 +85,7 @@ export class EmailService {
             <h2>👋 Hello!</h2>
             <p style="font-size: 16px;">Here's your friendly reminder about:</p>
             <p style="font-size: 18px; color: #4a90e2; margin: 15px 0;">${event.reminder.description}</p>
-            <p style="font-size: 14px; color: #666;">This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString()}</p>
+            <p style="font-size: 14px; color: #666;">This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} (IST)</p>
             <p style="font-size: 14px; margin-top: 15px;">We hope this reminder helps you stay on top of your healthcare journey!</p>
           </div>
           <div class="footer">
@@ -104,7 +102,7 @@ export class EmailService {
 
 Here's your friendly reminder about: ${event.reminder.description}
 
-This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString()}
+This was scheduled for: ${new Date(event.reminder.dateTime).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })} (IST)
 
 We hope this reminder helps you stay on top of your healthcare journey!
 
