@@ -6,6 +6,7 @@ import * as path from "path";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as appsync from "aws-cdk-lib/aws-appsync";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { GraphqlApi, SchemaFile, AuthorizationType } from "aws-cdk-lib/aws-appsync";
 import { LambdaDestination } from "aws-cdk-lib/aws-s3-notifications";
@@ -24,6 +25,57 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
       'ExistingUserPool',
       props.existingUserPoolId
     );
+
+    // Create DynamoDB table for reminders
+    const remindersTable = new dynamodb.Table(this, 'RemindersTable', {
+      tableName: 'medical-reminders',
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For development. Change for production
+      timeToLiveAttribute: 'ttl', // Optional: if you want to automatically delete expired reminders
+    });
+
+    // Create IAM role for EventBridge scheduler to invoke Lambda
+    const schedulerRole = new iam.Role(this, 'SchedulerRole', {
+      assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
+      description: 'Role for EventBridge Scheduler to invoke Lambda function',
+    });
+
+    // Create the Lambda function for processing reminders
+    const processReminderFunction = new NodejsFunction(
+      this,
+      "ProcessReminderFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        functionName: "ProcessReminderFunction",
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../src/functions/process-reminder.ts"
+        ),
+        environment: {
+          TABLE_NAME: remindersTable.tableName,
+          FROM_EMAIL_ADDRESS: 'sidathasiri@hotmail.com',
+        },
+        timeout: cdk.Duration.seconds(30)
+      }
+    );
+
+    // Grant DynamoDB permissions to the process reminder function
+    remindersTable.grantReadWriteData(processReminderFunction);
+
+    // Grant SES permissions to send emails
+    processReminderFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendEmail", "ses:SendRawEmail"],
+        resources: ["*"]
+      })
+    );
+
+    // Allow EventBridge Scheduler to invoke the process reminder function
+    processReminderFunction.grantInvoke(schedulerRole);
 
     // Create an S3 bucket
     const bucket = new s3.Bucket(this, "MedicalConvoBucket", {
@@ -242,6 +294,66 @@ export class MedicalConvoSummarizerStack extends cdk.Stack {
     babyDevelopmentInfoDataSource.createResolver('getBabyDevelopmentInfo-resolver', {
       fieldName: 'getBabyDevelopmentInfo',
       typeName: 'Query',
+    });
+
+
+    // Create the Lambda function for reminders
+    const remindersFunction = new NodejsFunction(
+      this,
+      "RemindersFunction",
+      {
+        runtime: lambda.Runtime.NODEJS_22_X,
+        functionName: "RemindersFunction",
+        handler: "handler",
+        entry: path.join(
+          __dirname,
+          "../src/functions/reminders-handler.ts"
+        ),
+        environment: {
+          TABLE_NAME: remindersTable.tableName,
+          PROCESS_REMINDER_FUNCTION_ARN: processReminderFunction.functionArn,
+          SCHEDULER_EXECUTION_ROLE_ARN: schedulerRole.roleArn
+        }
+      }
+    );
+
+    // Grant DynamoDB permissions to the Lambda function
+    remindersTable.grantReadWriteData(remindersFunction);
+
+    // Grant EventBridge Scheduler permissions
+    remindersFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "scheduler:CreateSchedule",
+          "scheduler:DeleteSchedule",
+          "scheduler:GetSchedule",
+          "iam:PassRole"
+        ],
+        resources: ["*"]
+      })
+    );
+
+    // Add as AppSync data source
+    const remindersDataSource = appSyncGraphQLApi.addLambdaDataSource(
+      'reminders-data-source',
+      remindersFunction
+    );
+
+    // Attach resolvers for all reminder operations
+    remindersDataSource.createResolver('listReminders-resolver', {
+      typeName: 'Query',
+      fieldName: 'listReminders',
+    });
+
+    remindersDataSource.createResolver('createReminder-resolver', {
+      typeName: 'Mutation',
+      fieldName: 'createReminder',
+    });
+
+    remindersDataSource.createResolver('deleteReminder-resolver', {
+      typeName: 'Mutation',
+      fieldName: 'deleteReminder',
     });
   }
 }
