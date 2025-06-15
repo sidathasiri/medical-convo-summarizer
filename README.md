@@ -2,6 +2,8 @@
 
 A serverless healthcare reminder system built with AWS CDK, designed to help users manage their healthcare appointments and tasks effectively. The system provides automated email notifications with a user-friendly interface and reliable delivery mechanism.
 
+- **Live Demo**: https://d3j9l9t024859x.cloudfront.net/
+
 ## 🌟 Features
 
 ### 🎙️ Medical Consultation Recording & Transcription
