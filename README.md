@@ -32,7 +32,7 @@ A serverless healthcare reminder system built with AWS CDK, designed to help use
 
 The system is built using the following AWS services:
 
-- **AWS Lambda**: For processing reminders and sending notifications
+- **AWS Lambda**: For all the data processing & computations 
 - **Amazon EventBridge**: For scheduling and triggering reminders
 - **Amazon DynamoDB**: For storing reminder information
 - **Amazon SES**: For sending branded email notifications
