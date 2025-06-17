@@ -4,6 +4,6 @@ import { MedicalConvoSummarizerStack } from "../lib/medical-convo-summarizer-sta
 
 const app = new cdk.App();
 new MedicalConvoSummarizerStack(app, "MedicalConvoSummarizerStack", {
-  env: { account: "826406658508", region: "us-east-1" },
-  existingUserPoolId: 'us-east-1_SiFC5wK0S'
+  env: { account: "your_account_id", region: "aws_region" },
+  existingUserPoolId: 'your_user_pool_id', // Replace with your actual User Pool ID
 });

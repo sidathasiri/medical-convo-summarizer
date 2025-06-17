@@ -61,10 +61,16 @@ The system is built using the following AWS services:
    ```bash
    npm install
    ```
+3. Configure AWS credentials
 
-3. Configure environment variables
+4. Configurations
+     - Update the AWS account id, region and Cognito pool id in `bin/medical-convo-summarizer.ts`. You can find the Cognito pool ID after deploying the `https://github.com/sidathasiri/medical-convo-summarizer-web` project.
+     - Update the `FROM_EMAIL_ADDRESS` in `lib/medical-convo-summarizer-stack.ts`. This is the email that you would use to send emails
+     - Ensure the email addresses that you would use to send/receive are updated in SES as verified email addresses (if in SES sandbox mode)
+     - Update the `bucketName` in `lib/medical-convo-summarizer-stack.ts`. This must be globally unique in S3.
+     - Ensure you have access to the Nova Pro (`amazon.nova-pro-v1:0`) model in Bedrock
 
-4. Deploy the stack:
+5. Deploy the stack:
    ```bash
    npx cdk deploy
    ```
