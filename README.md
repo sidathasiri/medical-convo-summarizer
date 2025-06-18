@@ -4,6 +4,8 @@ A serverless healthcare reminder system built with AWS CDK, designed to help use
 
 - **Live Demo**: https://d3j9l9t024859x.cloudfront.net/
 
+You can find a sample voice conversation to upload and test under the `sample-data` folder
+
 ## 🌟 Features
 
 ### 🎙️ Medical Consultation Recording & Transcription
