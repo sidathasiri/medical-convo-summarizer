@@ -3,6 +3,7 @@
 A serverless healthcare reminder system built with AWS CDK, designed to help users manage their healthcare appointments and tasks effectively. The system provides automated email notifications with a user-friendly interface and reliable delivery mechanism.
 
 - **Live Demo**: https://d3j9l9t024859x.cloudfront.net/
+- **Frontend repository**: https://github.com/sidathasiri/medical-convo-summarizer-web
 
 You can find a sample voice conversation to upload and test under the `sample-data` folder
 
